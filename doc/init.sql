@@ -1,0 +1,14 @@
+-- 教学数字平台数据库初始化脚本
+
+-- 创建数据库
+CREATE DATABASE IF NOT EXISTS edum DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+USE edum;
+
+-- 示例表结构（包含基础字段）
+CREATE TABLE IF NOT EXISTS example_table (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键ID',
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    is_deleted TINYINT DEFAULT 0 COMMENT '逻辑删除标识（0-未删除，1-已删除）'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='示例表';

@@ -1,0 +1,250 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.edum.mapper.ScoreMapper">
+
+    <!-- 结果映射 -->
+    <resultMap id="BaseResultMap" type="com.edum.entity.Score">
+        <id column="id" property="id"/>
+        <result column="student_id" property="studentId"/>
+        <result column="student_name" property="studentName"/>
+        <result column="class_id" property="classId"/>
+        <result column="class_name" property="className"/>
+        <result column="subject" property="subject"/>
+        <result column="exam_name" property="examName"/>
+        <result column="score" property="score"/>
+        <result column="full_score" property="fullScore"/>
+        <result column="pass_score" property="passScore"/>
+        <result column="rank" property="rank"/>
+        <result column="input_user_id" property="inputUserId"/>
+        <result column="input_user_name" property="inputUserName"/>
+        <result column="update_user_id" property="updateUserId"/>
+        <result column="update_user_name" property="updateUserName"/>
+        <result column="modify_time" property="modifyTime"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+        <result column="is_deleted" property="isDeleted"/>
+    </resultMap>
+
+    <!-- 基础列 -->
+    <sql id="Base_Column_List">
+        s.id, s.student_id, st.name as student_name, s.class_id, c.class_name as class_name,
+        s.subject, s.exam_name, s.score, s.full_score, s.pass_score, s.rank,
+        s.input_user_id, u1.real_name as input_user_name,
+        s.update_user_id, u2.real_name as update_user_name,
+        s.modify_time, s.create_time, s.update_time, s.is_deleted
+    </sql>
+
+    <!-- 分页查询成绩列表 -->
+    <select id="selectPage" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM score s
+        LEFT JOIN student st ON s.student_id = st.id
+        LEFT JOIN class_entity c ON s.class_id = c.id
+        LEFT JOIN sys_user u1 ON s.input_user_id = u1.id
+        LEFT JOIN sys_user u2 ON s.update_user_id = u2.id
+        WHERE s.is_deleted = 0
+        <if test="classId != null">
+            AND s.class_id = #{classId}
+        </if>
+        <if test="studentId != null">
+            AND s.student_id = #{studentId}
+        </if>
+        <if test="subject != null and subject != ''">
+            AND s.subject = #{subject}
+        </if>
+        <if test="examName != null and examName != ''">
+            AND s.exam_name = #{examName}
+        </if>
+        ORDER BY s.create_time DESC
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <!-- 统计总数 -->
+    <select id="countTotal" resultType="long">
+        SELECT COUNT(*)
+        FROM score s
+        WHERE s.is_deleted = 0
+        <if test="classId != null">
+            AND s.class_id = #{classId}
+        </if>
+        <if test="studentId != null">
+            AND s.student_id = #{studentId}
+        </if>
+        <if test="subject != null and subject != ''">
+            AND s.subject = #{subject}
+        </if>
+        <if test="examName != null and examName != ''">
+            AND s.exam_name = #{examName}
+        </if>
+    </select>
+
+    <!-- 根据ID查询成绩详情 -->
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM score s
+        LEFT JOIN student st ON s.student_id = st.id
+        LEFT JOIN class_entity c ON s.class_id = c.id
+        LEFT JOIN sys_user u1 ON s.input_user_id = u1.id
+        LEFT JOIN sys_user u2 ON s.update_user_id = u2.id
+        WHERE s.id = #{id}
+        AND s.is_deleted = 0
+    </select>
+
+    <!-- 插入成绩记录 -->
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO score (
+            student_id, class_id, subject, exam_name, score, full_score, pass_score, rank,
+            input_user_id, create_time, update_time, is_deleted
+        ) VALUES (
+            #{studentId}, #{classId}, #{subject}, #{examName}, #{score}, #{fullScore}, #{passScore}, #{rank},
+            #{inputUserId}, NOW(), NOW(), 0
+        )
+    </insert>
+
+    <!-- 更新成绩记录 -->
+    <update id="update">
+        UPDATE score
+        <set>
+            <if test="score != null">score = #{score},</if>
+            <if test="rank != null">rank = #{rank},</if>
+            <if test="updateUserId != null">update_user_id = #{updateUserId},</if>
+            modify_time = NOW(),
+            update_time = NOW()
+        </set>
+        WHERE id = #{id}
+        AND is_deleted = 0
+    </update>
+
+    <!-- 逻辑删除成绩记录 -->
+    <update id="deleteById">
+        UPDATE score
+        SET is_deleted = 1,
+            update_time = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <!-- 检查同一学生同一科目同一考试是否已有成绩记录 -->
+    <select id="checkExistsByStudentSubjectExam" resultMap="BaseResultMap">
+        SELECT id, student_id, subject, exam_name, score
+        FROM score
+        WHERE student_id = #{studentId}
+        AND subject = #{subject}
+        AND exam_name = #{examName}
+        AND is_deleted = 0
+        LIMIT 1
+    </select>
+
+    <!-- 批量插入或更新成绩记录（使用ON DUPLICATE KEY UPDATE） -->
+    <insert id="batchInsertOrUpdate">
+        INSERT INTO score (
+            student_id, class_id, subject, exam_name, score, full_score, pass_score, rank,
+            input_user_id, create_time, update_time, is_deleted
+        ) VALUES
+        <foreach collection="list" item="item" separator=",">
+            (
+                #{item.studentId}, #{item.classId}, #{item.subject}, #{item.examName}, #{item.score},
+                #{item.fullScore}, #{item.passScore}, #{item.rank}, #{item.inputUserId}, NOW(), NOW(), 0
+            )
+        </foreach>
+        ON DUPLICATE KEY UPDATE
+            score = VALUES(score),
+            rank = VALUES(rank),
+            update_user_id = VALUES(input_user_id),
+            modify_time = NOW(),
+            update_time = NOW()
+    </insert>
+
+    <!-- 获取成绩统计（按班级） -->
+    <select id="getStatisticsByClass" resultType="map">
+        SELECT
+            COUNT(*) as totalCount,
+            ROUND(AVG(score), 2) as avgScore,
+            MAX(score) as maxScore,
+            MIN(score) as minScore,
+            SUM(CASE WHEN score &gt;= pass_score THEN 1 ELSE 0 END) as passCount,
+            CASE
+                WHEN COUNT(*) > 0 THEN ROUND(SUM(CASE WHEN score &gt;= pass_score THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2)
+                ELSE 0
+            END as passRate,
+            SUM(CASE WHEN score &gt;= (full_score * 0.9) THEN 1 ELSE 0 END) as excellentCount,
+            CASE
+                WHEN COUNT(*) > 0 THEN ROUND(SUM(CASE WHEN score &gt;= (full_score * 0.9) THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2)
+                ELSE 0
+            END as excellentRate
+        FROM score
+        WHERE class_id = #{classId}
+        AND is_deleted = 0
+        <if test="subject != null and subject != ''">
+            AND subject = #{subject}
+        </if>
+        <if test="examName != null and examName != ''">
+            AND exam_name = #{examName}
+        </if>
+    </select>
+
+    <!-- 获取成绩统计（按科目） -->
+    <select id="getStatisticsBySubject" resultType="map">
+        SELECT
+            COUNT(*) as totalCount,
+            ROUND(AVG(score), 2) as avgScore,
+            MAX(score) as maxScore,
+            MIN(score) as minScore,
+            SUM(CASE WHEN score &gt;= pass_score THEN 1 ELSE 0 END) as passCount,
+            CASE
+                WHEN COUNT(*) > 0 THEN ROUND(SUM(CASE WHEN score &gt;= pass_score THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2)
+                ELSE 0
+            END as passRate,
+            SUM(CASE WHEN score &gt;= (full_score * 0.9) THEN 1 ELSE 0 END) as excellentCount,
+            CASE
+                WHEN COUNT(*) > 0 THEN ROUND(SUM(CASE WHEN score &gt;= (full_score * 0.9) THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2)
+                ELSE 0
+            END as excellentRate
+        FROM score
+        WHERE class_id = #{classId}
+        AND subject = #{subject}
+        AND is_deleted = 0
+        <if test="examName != null and examName != ''">
+            AND exam_name = #{examName}
+        </if>
+    </select>
+
+    <!-- 获取分数段分布 -->
+    <select id="getScoreDistribution" resultType="map">
+        SELECT
+            CASE
+                WHEN score &gt;= (full_score * 0.9) THEN '90-100'
+                WHEN score &gt;= (full_score * 0.8) THEN '80-89'
+                WHEN score &gt;= (full_score * 0.7) THEN '70-79'
+                WHEN score &gt;= (full_score * 0.6) THEN '60-69'
+                ELSE '0-59'
+            END as scoreRange,
+            COUNT(*) as count,
+            ROUND(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM score WHERE class_id = #{classId} AND is_deleted = 0
+                <if test="subject != null and subject != ''">
+                    AND subject = #{subject}
+                </if>
+                <if test="examName != null and examName != ''">
+                    AND exam_name = #{examName}
+                </if>
+            ), 2) as percentage
+        FROM score
+        WHERE class_id = #{classId}
+        AND is_deleted = 0
+        <if test="subject != null and subject != ''">
+            AND subject = #{subject}
+        </if>
+        <if test="examName != null and examName != ''">
+            AND exam_name = #{examName}
+        </if>
+        GROUP BY
+            CASE
+                WHEN score &gt;= (full_score * 0.9) THEN '90-100'
+                WHEN score &gt;= (full_score * 0.8) THEN '80-89'
+                WHEN score &gt;= (full_score * 0.7) THEN '70-79'
+                WHEN score &gt;= (full_score * 0.6) THEN '60-69'
+                ELSE '0-59'
+            END
+        ORDER BY scoreRange DESC
+    </select>
+
+</mapper>

@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.edum.mapper.StudentMapper">
+
+    <!-- 结果映射 -->
+    <resultMap id="BaseResultMap" type="com.edum.entity.Student">
+        <id column="id" property="id"/>
+        <result column="student_no" property="studentNo"/>
+        <result column="name" property="name"/>
+        <result column="gender" property="gender"/>
+        <result column="birth_date" property="birthDate"/>
+        <result column="class_id" property="classId"/>
+        <result column="class_name" property="className"/>
+        <result column="phone" property="phone"/>
+        <result column="address" property="address"/>
+        <result column="parent_name" property="parentName"/>
+        <result column="parent_phone" property="parentPhone"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+        <result column="is_deleted" property="isDeleted"/>
+    </resultMap>
+
+    <!-- 基础列 -->
+    <sql id="Base_Column_List">
+        s.id, s.student_no, s.name, s.gender, s.birth_date, s.class_id,
+        c.class_name as class_name, s.phone, s.address, s.parent_name, s.parent_phone,
+        s.create_time, s.update_time, s.is_deleted
+    </sql>
+
+    <!-- 分页查询学生列表 -->
+    <select id="selectPage" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM student s
+        LEFT JOIN class_entity c ON s.class_id = c.id
+        WHERE s.is_deleted = 0
+        <if test="name != null and name != ''">
+            AND s.name LIKE CONCAT('%', #{name}, '%')
+        </if>
+        <if test="classId != null">
+            AND s.class_id = #{classId}
+        </if>
+        ORDER BY s.class_id ASC, s.student_no ASC
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <!-- 统计总数 -->
+    <select id="countTotal" resultType="long">
+        SELECT COUNT(*)
+        FROM student s
+        WHERE s.is_deleted = 0
+        <if test="name != null and name != ''">
+            AND s.name LIKE CONCAT('%', #{name}, '%')
+        </if>
+        <if test="classId != null">
+            AND s.class_id = #{classId}
+        </if>
+    </select>
+
+    <!-- 根据ID查询学生详情 -->
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM student s
+        LEFT JOIN class_entity c ON s.class_id = c.id
+        WHERE s.id = #{id}
+        AND s.is_deleted = 0
+    </select>
+
+    <!-- 插入学生 -->
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO student (
+            student_no, name, gender, birth_date, class_id, phone, address,
+            parent_name, parent_phone, create_time, update_time, is_deleted
+        ) VALUES (
+            #{studentNo}, #{name}, #{gender}, #{birthDate}, #{classId}, #{phone}, #{address},
+            #{parentName}, #{parentPhone}, NOW(), NOW(), 0
+        )
+    </insert>
+
+    <!-- 更新学生 -->
+    <update id="update">
+        UPDATE student
+        <set>
+            <if test="name != null">name = #{name},</if>
+            <if test="gender != null">gender = #{gender},</if>
+            <if test="birthDate != null">birth_date = #{birthDate},</if>
+            <if test="classId != null">class_id = #{classId},</if>
+            <if test="phone != null">phone = #{phone},</if>
+            <if test="address != null">address = #{address},</if>
+            <if test="parentName != null">parent_name = #{parentName},</if>
+            <if test="parentPhone != null">parent_phone = #{parentPhone},</if>
+            update_time = NOW()
+        </set>
+        WHERE id = #{id}
+        AND is_deleted = 0
+    </update>
+
+    <!-- 逻辑删除学生 -->
+    <update id="deleteById">
+        UPDATE student
+        SET is_deleted = 1,
+            update_time = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <!-- 批量逻辑删除学生 -->
+    <update id="deleteBatch">
+        UPDATE student
+        SET is_deleted = 1,
+            update_time = NOW()
+        WHERE id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </update>
+
+    <!-- 检查学号是否存在 -->
+    <select id="checkStudentNoExists" resultMap="BaseResultMap">
+        SELECT id, student_no
+        FROM student
+        WHERE student_no = #{studentNo}
+        AND is_deleted = 0
+        <if test="excludeId != null">
+            AND id != #{excludeId}
+        </if>
+        LIMIT 1
+    </select>
+
+    <!-- 统计班级学生人数 -->
+    <select id="countByClassId" resultType="int">
+        SELECT COUNT(*)
+        FROM student
+        WHERE class_id = #{classId}
+        AND is_deleted = 0
+    </select>
+
+    <!-- 按姓名模糊搜索 -->
+    <select id="searchByName" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM student s
+        LEFT JOIN class_entity c ON s.class_id = c.id
+        WHERE s.name LIKE CONCAT('%', #{name}, '%')
+        AND s.is_deleted = 0
+        ORDER BY s.class_id ASC, s.student_no ASC
+    </select>
+
+    <!-- 按班级筛选 -->
+    <select id="selectByClassId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM student s
+        LEFT JOIN class_entity c ON s.class_id = c.id
+        WHERE s.class_id = #{classId}
+        AND s.is_deleted = 0
+        ORDER BY s.student_no ASC
+    </select>
+
+</mapper>

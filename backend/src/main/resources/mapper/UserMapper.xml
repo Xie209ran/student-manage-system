@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.edum.mapper.UserMapper">
+
+    <!-- 结果映射 -->
+    <resultMap id="BaseResultMap" type="com.edum.entity.SysUser">
+        <id column="id" property="id"/>
+        <result column="username" property="username"/>
+        <result column="password" property="password"/>
+        <result column="real_name" property="realName"/>
+        <result column="gender" property="gender"/>
+        <result column="role" property="role"/>
+        <result column="phone" property="phone"/>
+        <result column="email" property="email"/>
+        <result column="avatar" property="avatar"/>
+        <result column="login_fail_count" property="loginFailCount"/>
+        <result column="locked_until" property="lockedUntil"/>
+        <result column="last_login_time" property="lastLoginTime"/>
+        <result column="status" property="status"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+        <result column="is_deleted" property="isDeleted"/>
+    </resultMap>
+
+    <!-- 基础列 -->
+    <sql id="Base_Column_List">
+        id, username, password, real_name, gender, role, phone, email, avatar,
+        login_fail_count, locked_until, last_login_time, status,
+        create_time, update_time, is_deleted
+    </sql>
+
+    <!-- 根据用户名查询用户 -->
+    <select id="findByUsername" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_user
+        WHERE username = #{username}
+        AND is_deleted = 0
+    </select>
+
+    <!-- 根据ID查询用户 -->
+    <select id="findById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_user
+        WHERE id = #{id}
+        AND is_deleted = 0
+    </select>
+
+    <!-- 插入用户 -->
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO sys_user (
+            username, password, real_name, gender, role, phone, email, avatar,
+            login_fail_count, locked_until, last_login_time, status,
+            create_time, update_time, is_deleted
+        ) VALUES (
+            #{username}, #{password}, #{realName}, #{gender}, #{role}, #{phone}, #{email}, #{avatar},
+            #{loginFailCount}, #{lockedUntil}, #{lastLoginTime}, #{status},
+            NOW(), NOW(), 0
+        )
+    </insert>
+
+    <!-- 更新用户 -->
+    <update id="update">
+        UPDATE sys_user
+        <set>
+            <if test="password != null">password = #{password},</if>
+            <if test="realName != null">real_name = #{realName},</if>
+            <if test="gender != null">gender = #{gender},</if>
+            <if test="role != null">role = #{role},</if>
+            <if test="phone != null">phone = #{phone},</if>
+            <if test="email != null">email = #{email},</if>
+            <if test="avatar != null">avatar = #{avatar},</if>
+            <if test="status != null">status = #{status},</if>
+            update_time = NOW()
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <!-- 更新登录失败次数 -->
+    <update id="updateLoginFailCount">
+        UPDATE sys_user
+        SET login_fail_count = #{loginFailCount},
+            update_time = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <!-- 更新锁定时间 -->
+    <update id="updateLockedUntil">
+        UPDATE sys_user
+        SET locked_until = #{lockedUntil},
+            update_time = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <!-- 更新最后登录时间 -->
+    <update id="updateLastLoginTime">
+        UPDATE sys_user
+        SET last_login_time = #{lastLoginTime},
+            update_time = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <!-- 重置登录失败次数 -->
+    <update id="resetLoginFailCount">
+        UPDATE sys_user
+        SET login_fail_count = 0,
+            locked_until = NULL,
+            update_time = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <!-- 获取教师下拉列表（只返回id和realName，role='teacher'） -->
+    <select id="selectTeacherDropDownList" resultType="map">
+        SELECT id, real_name as realName
+        FROM sys_user
+        WHERE role = 'teacher'
+        AND is_deleted = 0
+        AND status = 1
+        ORDER BY real_name ASC
+    </select>
+
+    <!-- 分页查询教师列表 -->
+    <select id="selectPage" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_user
+        WHERE is_deleted = 0
+        AND role = 'teacher'
+        <if test="name != null and name != ''">
+            AND real_name LIKE CONCAT('%', #{name}, '%')
+        </if>
+        <if test="status != null">
+            AND status = #{status}
+        </if>
+        ORDER BY create_time DESC
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <!-- 统计教师总数 -->
+    <select id="countTotal" resultType="long">
+        SELECT COUNT(*)
+        FROM sys_user
+        WHERE is_deleted = 0
+        AND role = 'teacher'
+        <if test="name != null and name != ''">
+            AND real_name LIKE CONCAT('%', #{name}, '%')
+        </if>
+        <if test="status != null">
+            AND status = #{status}
+        </if>
+    </select>
+
+</mapper>

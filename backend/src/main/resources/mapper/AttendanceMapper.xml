@@ -1,0 +1,195 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.edum.mapper.AttendanceMapper">
+
+    <!-- 结果映射 -->
+    <resultMap id="BaseResultMap" type="com.edum.entity.Attendance">
+        <id column="id" property="id"/>
+        <result column="student_id" property="studentId"/>
+        <result column="student_name" property="studentName"/>
+        <result column="class_id" property="classId"/>
+        <result column="class_name" property="className"/>
+        <result column="attendance_date" property="attendanceDate"/>
+        <result column="status" property="status"/>
+        <result column="remark" property="remark"/>
+        <result column="check_in_user_id" property="checkInUserId"/>
+        <result column="check_in_user_name" property="checkInUserName"/>
+        <result column="check_in_time" property="checkInTime"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+        <result column="is_deleted" property="isDeleted"/>
+    </resultMap>
+
+    <!-- 基础列 -->
+    <sql id="Base_Column_List">
+        a.id, a.student_id, s.name as student_name, a.class_id, c.class_name as class_name,
+        a.attendance_date, a.status, a.remark, a.check_in_user_id, u.real_name as check_in_user_name,
+        a.check_in_time, a.create_time, a.update_time, a.is_deleted
+    </sql>
+
+    <!-- 分页查询考勤记录 -->
+    <select id="selectPage" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM attendance a
+        LEFT JOIN student s ON a.student_id = s.id
+        LEFT JOIN class_entity c ON a.class_id = c.id
+        LEFT JOIN sys_user u ON a.check_in_user_id = u.id
+        WHERE a.is_deleted = 0
+        <if test="classId != null">
+            AND a.class_id = #{classId}
+        </if>
+        <if test="studentId != null">
+            AND a.student_id = #{studentId}
+        </if>
+        <if test="startDate != null">
+            AND a.attendance_date &gt;= #{startDate}
+        </if>
+        <if test="endDate != null">
+            AND a.attendance_date &lt;= #{endDate}
+        </if>
+        ORDER BY a.attendance_date DESC, a.student_id ASC
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <!-- 统计总数 -->
+    <select id="countTotal" resultType="long">
+        SELECT COUNT(*)
+        FROM attendance a
+        WHERE a.is_deleted = 0
+        <if test="classId != null">
+            AND a.class_id = #{classId}
+        </if>
+        <if test="studentId != null">
+            AND a.student_id = #{studentId}
+        </if>
+        <if test="startDate != null">
+            AND a.attendance_date &gt;= #{startDate}
+        </if>
+        <if test="endDate != null">
+            AND a.attendance_date &lt;= #{endDate}
+        </if>
+    </select>
+
+    <!-- 根据ID查询考勤详情 -->
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM attendance a
+        LEFT JOIN student s ON a.student_id = s.id
+        LEFT JOIN class_entity c ON a.class_id = c.id
+        LEFT JOIN sys_user u ON a.check_in_user_id = u.id
+        WHERE a.id = #{id}
+        AND a.is_deleted = 0
+    </select>
+
+    <!-- 插入考勤记录 -->
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO attendance (
+            student_id, class_id, attendance_date, status, remark,
+            check_in_user_id, check_in_time, create_time, update_time, is_deleted
+        ) VALUES (
+            #{studentId}, #{classId}, #{attendanceDate}, #{status}, #{remark},
+            #{checkInUserId}, #{checkInTime}, NOW(), NOW(), 0
+        )
+    </insert>
+
+    <!-- 更新考勤记录 -->
+    <update id="update">
+        UPDATE attendance
+        <set>
+            <if test="status != null">status = #{status},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            <if test="checkInUserId != null">check_in_user_id = #{checkInUserId},</if>
+            <if test="checkInTime != null">check_in_time = #{checkInTime},</if>
+            update_time = NOW()
+        </set>
+        WHERE id = #{id}
+        AND is_deleted = 0
+    </update>
+
+    <!-- 逻辑删除考勤记录 -->
+    <update id="deleteById">
+        UPDATE attendance
+        SET is_deleted = 1,
+            update_time = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <!-- 检查同一天同一学生是否已有考勤记录 -->
+    <select id="checkExistsByDateAndStudent" resultMap="BaseResultMap">
+        SELECT id, student_id, attendance_date, status
+        FROM attendance
+        WHERE attendance_date = #{attendanceDate}
+        AND student_id = #{studentId}
+        AND is_deleted = 0
+        LIMIT 1
+    </select>
+
+    <!-- 批量插入或更新考勤记录（使用ON DUPLICATE KEY UPDATE） -->
+    <insert id="batchInsertOrUpdate">
+        INSERT INTO attendance (
+            student_id, class_id, attendance_date, status, remark,
+            check_in_user_id, check_in_time, create_time, update_time, is_deleted
+        ) VALUES
+        <foreach collection="list" item="item" separator=",">
+            (
+                #{item.studentId}, #{item.classId}, #{item.attendanceDate}, #{item.status}, #{item.remark},
+                #{item.checkInUserId}, #{item.checkInTime}, NOW(), NOW(), 0
+            )
+        </foreach>
+        ON DUPLICATE KEY UPDATE
+            status = VALUES(status),
+            remark = VALUES(remark),
+            check_in_user_id = VALUES(check_in_user_id),
+            check_in_time = VALUES(check_in_time),
+            update_time = NOW()
+    </insert>
+
+    <!-- 获取考勤统计（按班级） -->
+    <select id="getStatisticsByClass" resultType="map">
+        SELECT
+            COUNT(*) as totalCount,
+            SUM(CASE WHEN status = 1 THEN 1 ELSE 0 END) as presentCount,
+            SUM(CASE WHEN status = 0 THEN 1 ELSE 0 END) as absentCount,
+            SUM(CASE WHEN status = 2 THEN 1 ELSE 0 END) as lateCount,
+            SUM(CASE WHEN status = 3 THEN 1 ELSE 0 END) as earlyLeaveCount,
+            SUM(CASE WHEN status = 4 THEN 1 ELSE 0 END) as leaveCount,
+            CASE
+                WHEN COUNT(*) > 0 THEN ROUND(SUM(CASE WHEN status = 1 THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2)
+                ELSE 0
+            END as attendanceRate
+        FROM attendance
+        WHERE class_id = #{classId}
+        AND is_deleted = 0
+        <if test="startDate != null">
+            AND attendance_date &gt;= #{startDate}
+        </if>
+        <if test="endDate != null">
+            AND attendance_date &lt;= #{endDate}
+        </if>
+    </select>
+
+    <!-- 获取考勤统计（按学生） -->
+    <select id="getStatisticsByStudent" resultType="map">
+        SELECT
+            COUNT(*) as totalCount,
+            SUM(CASE WHEN status = 1 THEN 1 ELSE 0 END) as presentCount,
+            SUM(CASE WHEN status = 0 THEN 1 ELSE 0 END) as absentCount,
+            SUM(CASE WHEN status = 2 THEN 1 ELSE 0 END) as lateCount,
+            SUM(CASE WHEN status = 3 THEN 1 ELSE 0 END) as earlyLeaveCount,
+            SUM(CASE WHEN status = 4 THEN 1 ELSE 0 END) as leaveCount,
+            CASE
+                WHEN COUNT(*) > 0 THEN ROUND(SUM(CASE WHEN status = 1 THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2)
+                ELSE 0
+            END as attendanceRate
+        FROM attendance
+        WHERE student_id = #{studentId}
+        AND is_deleted = 0
+        <if test="startDate != null">
+            AND attendance_date &gt;= #{startDate}
+        </if>
+        <if test="endDate != null">
+            AND attendance_date &lt;= #{endDate}
+        </if>
+    </select>
+
+</mapper>

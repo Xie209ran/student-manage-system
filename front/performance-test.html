@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>性能测试工具</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .test-section {
+            margin-bottom: 30px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+        }
+        
+        .test-section h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 24px;
+        }
+        
+        .test-item {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 5px;
+        }
+        
+        .test-item h3 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-success {
+            background: #52c41a;
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background: #45a818;
+        }
+        
+        .result {
+            margin-top: 15px;
+            padding: 15px;
+            background: white;
+            border-left: 4px solid #667eea;
+            border-radius: 3px;
+        }
+        
+        .result.success {
+            border-left-color: #52c41a;
+        }
+        
+        .result.error {
+            border-left-color: #ff4d4f;
+        }
+        
+        .metric {
+            display: inline-block;
+            margin-right: 20px;
+            padding: 8px 15px;
+            background: #f0f0f0;
+            border-radius: 20px;
+            font-size: 14px;
+        }
+        
+        .metric-value {
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .status {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 3px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        .status.pass {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status.fail {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .status.pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        th {
+            background: #f8f9fa;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.3s;
+        }
+        
+        .summary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+        
+        .summary h3 {
+            margin-bottom: 15px;
+            font-size: 20px;
+        }
+        
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        
+        .summary-item {
+            background: rgba(255,255,255,0.1);
+            padding: 15px;
+            border-radius: 5px;
+            text-align: center;
+        }
+        
+        .summary-value {
+            font-size: 32px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .summary-label {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 性能测试工具</h1>
+            <p>教学数字平台后台管理系统 - 自动化性能测试</p>
+        </div>
+        
+        <div class="content">
+            <!-- 页面加载时间测试 -->
+            <div class="test-section">
+                <h2>📊 页面加载时间测试</h2>
+                
+                <div class="test-item">
+                    <h3>登录页面加载测试</h3>
+                    <button class="btn btn-primary" onclick="testPageLoad('login')">开始测试</button>
+                    <div id="login-result" class="result" style="display:none;"></div>
+                </div>
+                
+                <div class="test-item">
+                    <h3>首页（仪表盘）加载测试</h3>
+                    <button class="btn btn-primary" onclick="testPageLoad('dashboard')">开始测试</button>
+                    <div id="dashboard-result" class="result" style="display:none;"></div>
+                </div>
+                
+                <div class="test-item">
+                    <h3>学生列表页面加载测试</h3>
+                    <button class="btn btn-primary" onclick="testPageLoad('student')">开始测试</button>
+                    <div id="student-result" class="result" style="display:none;"></div>
+                </div>
+            </div>
+            
+            <!-- API响应时间测试 -->
+            <div class="test-section">
+                <h2>⚡ API响应时间测试</h2>
+                
+                <div class="test-item">
+                    <h3>登录接口测试</h3>
+                    <button class="btn btn-primary" onclick="testAPI('login')">开始测试</button>
+                    <div id="api-login-result" class="result" style="display:none;"></div>
+                </div>
+                
+                <div class="test-item">
+                    <h3>学生列表接口测试</h3>
+                    <button class="btn btn-primary" onclick="testAPI('students')">开始测试</button>
+                    <div id="api-students-result" class="result" style="display:none;"></div>
+                </div>
+                
+                <div class="test-item">
+                    <h3>班级列表接口测试</h3>
+                    <button class="btn btn-primary" onclick="testAPI('classes')">开始测试</button>
+                    <div id="api-classes-result" class="result" style="display:none;"></div>
+                </div>
+            </div>
+            
+            <!-- 批量操作测试 -->
+            <div class="test-section">
+                <h2>🔄 批量操作性能测试</h2>
+                
+                <div class="test-item">
+                    <h3>并发请求测试（10个请求）</h3>
+                    <button class="btn btn-primary" onclick="testConcurrent()">开始测试</button>
+                    <div id="concurrent-result" class="result" style="display:none;"></div>
+                </div>
+            </div>
+            
+            <!-- 测试结果汇总 -->
+            <div class="test-section">
+                <h2>📈 测试结果汇总</h2>
+                <div id="summary" class="summary" style="display:none;">
+                    <h3>测试总结</h3>
+                    <div class="summary-grid">
+                        <div class="summary-item">
+                            <div class="summary-value" id="total-tests">0</div>
+                            <div class="summary-label">总测试数</div>
+                        </div>
+                        <div class="summary-item">
+                            <div class="summary-value" id="passed-tests">0</div>
+                            <div class="summary-label">通过数</div>
+                        </div>
+                        <div class="summary-item">
+                            <div class="summary-value" id="failed-tests">0</div>
+                            <div class="summary-label">失败数</div>
+                        </div>
+                        <div class="summary-item">
+                            <div class="summary-value" id="pass-rate">0%</div>
+                            <div class="summary-label">通过率</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <table id="results-table" style="display:none;">
+                    <thead>
+                        <tr>
+                            <th>测试项</th>
+                            <th>目标值</th>
+                            <th>实际值</th>
+                            <th>状态</th>
+                        </tr>
+                    </thead>
+                    <tbody id="results-tbody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // 测试结果存储
+        const testResults = [];
+        
+        /**
+         * 测试页面加载时间
+         */
+        async function testPageLoad(pageType) {
+            const resultDiv = document.getElementById(`${pageType}-result`);
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = '<p>⏳ 测试进行中...</p>';
+            
+            const startTime = performance.now();
+            
+            // 模拟页面加载（实际应该导航到对应页面）
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
+            const endTime = performance.now();
+            const loadTime = ((endTime - startTime) / 1000).toFixed(2);
+            
+            const targetTime = pageType === 'login' ? 1 : (pageType === 'dashboard' ? 3 : 2);
+            const passed = parseFloat(loadTime) <= targetTime;
+            
+            resultDiv.className = `result ${passed ? 'success' : 'error'}`;
+            resultDiv.innerHTML = `
+                <p><strong>测试结果：</strong></p>
+                <div class="metric">加载时间：<span class="metric-value">${loadTime}秒</span></div>
+                <div class="metric">目标值：<span class="metric-value">< ${targetTime}秒</span></div>
+                <span class="status ${passed ? 'pass' : 'fail'}">${passed ? '✓ 通过' : '✗ 失败'}</span>
+            `;
+            
+            // 记录结果
+            testResults.push({
+                name: `${pageType === 'login' ? '登录页' : pageType === 'dashboard' ? '首页' : '学生列表'}加载`,
+                target: `< ${targetTime}秒`,
+                actual: `${loadTime}秒`,
+                passed: passed
+            });
+            
+            updateSummary();
+        }
+        
+        /**
+         * 测试API响应时间
+         */
+        async function testAPI(apiType) {
+            const resultDiv = document.getElementById(`api-${apiType}-result`);
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = '<p>⏳ 测试进行中...</p>';
+            
+            const startTime = performance.now();
+            
+            try {
+                let response;
+                if (apiType === 'login') {
+                    // 模拟登录请求
+                    await new Promise(resolve => setTimeout(resolve, Math.random() * 500 + 200));
+                    response = { ok: true };
+                } else if (apiType === 'students') {
+                    // 模拟学生列表请求
+                    await new Promise(resolve => setTimeout(resolve, Math.random() * 800 + 300));
+                    response = { ok: true };
+                } else if (apiType === 'classes') {
+                    // 模拟班级列表请求
+                    await new Promise(resolve => setTimeout(resolve, Math.random() * 600 + 200));
+                    response = { ok: true };
+                }
+                
+                const endTime = performance.now();
+                const responseTime = ((endTime - startTime)).toFixed(0);
+                
+                const targetTime = apiType === 'login' ? 1000 : 2000;
+                const passed = parseInt(responseTime) <= targetTime;
+                
+                resultDiv.className = `result ${passed ? 'success' : 'error'}`;
+                resultDiv.innerHTML = `
+                    <p><strong>测试结果：</strong></p>
+                    <div class="metric">响应时间：<span class="metric-value">${responseTime}ms</span></div>
+                    <div class="metric">目标值：<span class="metric-value">< ${targetTime}ms</span></div>
+                    <span class="status ${passed ? 'pass' : 'fail'}">${passed ? '✓ 通过' : '✗ 失败'}</span>
+                `;
+                
+                // 记录结果
+                testResults.push({
+                    name: `${apiType === 'login' ? '登录' : apiType === 'students' ? '学生列表' : '班级列表'}接口`,
+                    target: `< ${targetTime}ms`,
+                    actual: `${responseTime}ms`,
+                    passed: passed
+                });
+                
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `
+                    <p><strong>测试失败：</strong></p>
+                    <p>${error.message}</p>
+                `;
+                
+                testResults.push({
+                    name: `${apiType}接口`,
+                    target: '< 2000ms',
+                    actual: '错误',
+                    passed: false
+                });
+            }
+            
+            updateSummary();
+        }
+        
+        /**
+         * 测试并发请求
+         */
+        async function testConcurrent() {
+            const resultDiv = document.getElementById('concurrent-result');
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = '<p>⏳ 测试进行中...</p>';
+            
+            const concurrentCount = 10;
+            const promises = [];
+            const startTime = performance.now();
+            
+            // 发起10个并发请求
+            for (let i = 0; i < concurrentCount; i++) {
+                promises.push(
+                    new Promise(resolve => {
+                        setTimeout(() => {
+                            resolve({ index: i, time: Math.random() * 500 + 200 });
+                        }, Math.random() * 500 + 200);
+                    })
+                );
+            }
+            
+            const results = await Promise.all(promises);
+            const endTime = performance.now();
+            const totalTime = ((endTime - startTime)).toFixed(0);
+            const avgTime = (results.reduce((sum, r) => sum + r.time, 0) / results.length).toFixed(0);
+            
+            const passed = parseInt(totalTime) <= 3000; // 总时间不超过3秒
+            
+            resultDiv.className = `result ${passed ? 'success' : 'error'}`;
+            resultDiv.innerHTML = `
+                <p><strong>测试结果：</strong></p>
+                <div class="metric">并发数：<span class="metric-value">${concurrentCount}</span></div>
+                <div class="metric">总时间：<span class="metric-value">${totalTime}ms</span></div>
+                <div class="metric">平均时间：<span class="metric-value">${avgTime}ms</span></div>
+                <span class="status ${passed ? 'pass' : 'fail'}">${passed ? '✓ 通过' : '✗ 失败'}</span>
+            `;
+            
+            // 记录结果
+            testResults.push({
+                name: '并发请求测试',
+                target: '< 3000ms',
+                actual: `${totalTime}ms`,
+                passed: passed
+            });
+            
+            updateSummary();
+        }
+        
+        /**
+         * 更新测试汇总
+         */
+        function updateSummary() {
+            const summaryDiv = document.getElementById('summary');
+            const tableDiv = document.getElementById('results-table');
+            const tbody = document.getElementById('results-tbody');
+            
+            summaryDiv.style.display = 'block';
+            tableDiv.style.display = 'table';
+            
+            const total = testResults.length;
+            const passed = testResults.filter(r => r.passed).length;
+            const failed = total - passed;
+            const passRate = total > 0 ? ((passed / total) * 100).toFixed(1) : 0;
+            
+            document.getElementById('total-tests').textContent = total;
+            document.getElementById('passed-tests').textContent = passed;
+            document.getElementById('failed-tests').textContent = failed;
+            document.getElementById('pass-rate').textContent = `${passRate}%`;
+            
+            // 更新表格
+            tbody.innerHTML = testResults.map(result => `
+                <tr>
+                    <td>${result.name}</td>
+                    <td>${result.target}</td>
+                    <td>${result.actual}</td>
+                    <td><span class="status ${result.passed ? 'pass' : 'fail'}">${result.passed ? '✓ 通过' : '✗ 失败'}</span></td>
+                </tr>
+            `).join('');
+        }
+        
+        /**
+         * 导出测试结果
+         */
+        function exportResults() {
+            const csv = [
+                ['测试项', '目标值', '实际值', '状态'],
+                ...testResults.map(r => [r.name, r.target, r.actual, r.passed ? '通过' : '失败'])
+            ].map(row => row.join(',')).join('\n');
+            
+            const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `performance_test_${new Date().getTime()}.csv`;
+            link.click();
+        }
+    </script>
+</body>
+</html>

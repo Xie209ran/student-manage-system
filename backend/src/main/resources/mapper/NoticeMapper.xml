@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.edum.mapper.NoticeMapper">
+
+    <!-- 结果映射 -->
+    <resultMap id="BaseResultMap" type="com.edum.entity.Notice">
+        <id column="id" property="id"/>
+        <result column="title" property="title"/>
+        <result column="content" property="content"/>
+        <result column="publisher_id" property="publisherId"/>
+        <result column="publisher_name" property="publisherName"/>
+        <result column="type" property="type"/>
+        <result column="status" property="status"/>
+        <result column="publish_time" property="publishTime"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+        <result column="is_deleted" property="isDeleted"/>
+    </resultMap>
+
+    <!-- 基础列 -->
+    <sql id="Base_Column_List">
+        n.id, n.title, n.content, n.publisher_id, u.real_name as publisher_name,
+        n.type, n.status, n.publish_time, n.create_time, n.update_time, n.is_deleted
+    </sql>
+
+    <!-- 分页查询公告列表 -->
+    <select id="selectPage" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM notice n
+        LEFT JOIN sys_user u ON n.publisher_id = u.id
+        WHERE n.is_deleted = 0
+        <if test="title != null and title != ''">
+            AND n.title LIKE CONCAT('%', #{title}, '%')
+        </if>
+        <if test="type != null">
+            AND n.type = #{type}
+        </if>
+        <if test="status != null">
+            AND n.status = #{status}
+        </if>
+        ORDER BY n.create_time DESC
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <!-- 统计总数 -->
+    <select id="countTotal" resultType="long">
+        SELECT COUNT(*)
+        FROM notice n
+        WHERE n.is_deleted = 0
+        <if test="title != null and title != ''">
+            AND n.title LIKE CONCAT('%', #{title}, '%')
+        </if>
+        <if test="type != null">
+            AND n.type = #{type}
+        </if>
+        <if test="status != null">
+            AND n.status = #{status}
+        </if>
+    </select>
+
+    <!-- 根据ID查询公告详情 -->
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM notice n
+        LEFT JOIN sys_user u ON n.publisher_id = u.id
+        WHERE n.id = #{id}
+        AND n.is_deleted = 0
+    </select>
+
+    <!-- 插入公告 -->
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO notice (
+            title, content, publisher_id, type, status, publish_time,
+            create_time, update_time, is_deleted
+        ) VALUES (
+            #{title}, #{content}, #{publisherId}, #{type}, #{status}, #{publishTime},
+            NOW(), NOW(), 0
+        )
+    </insert>
+
+    <!-- 更新公告 -->
+    <update id="update">
+        UPDATE notice
+        <set>
+            <if test="title != null">title = #{title},</if>
+            <if test="content != null">content = #{content},</if>
+            <if test="type != null">type = #{type},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="publishTime != null">publish_time = #{publishTime},</if>
+            update_time = NOW()
+        </set>
+        WHERE id = #{id}
+        AND is_deleted = 0
+    </update>
+
+    <!-- 逻辑删除公告 -->
+    <update id="deleteById">
+        UPDATE notice
+        SET is_deleted = 1,
+            update_time = NOW()
+        WHERE id = #{id}
+    </update>
+
+</mapper>

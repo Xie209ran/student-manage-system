@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.edum.mapper.ClassMapper">
+
+    <!-- 结果映射 -->
+    <resultMap id="BaseResultMap" type="com.edum.entity.ClassEntity">
+        <id column="id" property="id"/>
+        <result column="class_name" property="className"/>
+        <result column="grade" property="grade"/>
+        <result column="teacher_id" property="teacherId"/>
+        <result column="teacher_name" property="teacherName"/>
+        <result column="classroom" property="classroom"/>
+        <result column="max_capacity" property="maxCapacity"/>
+        <result column="student_count" property="studentCount"/>
+        <result column="establish_date" property="establishDate"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+        <result column="is_deleted" property="isDeleted"/>
+    </resultMap>
+
+    <!-- 基础列 -->
+    <sql id="Base_Column_List">
+        c.id, c.class_name, c.grade, c.teacher_id, u.real_name as teacher_name,
+        c.classroom, c.max_capacity, c.establish_date,
+        c.create_time, c.update_time, c.is_deleted
+    </sql>
+
+    <!-- 分页查询班级列表 -->
+    <select id="selectPage" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>,
+               (SELECT COUNT(*) FROM student s WHERE s.class_id = c.id AND s.is_deleted = 0) as student_count
+        FROM class_entity c
+        LEFT JOIN sys_user u ON c.teacher_id = u.id
+        WHERE c.is_deleted = 0
+        <if test="className != null and className != ''">
+            AND c.class_name LIKE CONCAT('%', #{className}, '%')
+        </if>
+        <if test="grade != null">
+            AND c.grade = #{grade}
+        </if>
+        <if test="teacherId != null">
+            AND c.teacher_id = #{teacherId}
+        </if>
+        ORDER BY c.grade ASC, c.class_name ASC
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <!-- 统计总数 -->
+    <select id="countTotal" resultType="long">
+        SELECT COUNT(*)
+        FROM class_entity c
+        WHERE c.is_deleted = 0
+        <if test="className != null and className != ''">
+            AND c.class_name LIKE CONCAT('%', #{className}, '%')
+        </if>
+        <if test="grade != null">
+            AND c.grade = #{grade}
+        </if>
+        <if test="teacherId != null">
+            AND c.teacher_id = #{teacherId}
+        </if>
+    </select>
+
+    <!-- 根据ID查询班级详情 -->
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>,
+               (SELECT COUNT(*) FROM student s WHERE s.class_id = c.id AND s.is_deleted = 0) as student_count
+        FROM class_entity c
+        LEFT JOIN sys_user u ON c.teacher_id = u.id
+        WHERE c.id = #{id}
+        AND c.is_deleted = 0
+    </select>
+
+    <!-- 插入班级 -->
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO class_entity (
+            class_name, grade, teacher_id, classroom, max_capacity, establish_date,
+            create_time, update_time, is_deleted
+        ) VALUES (
+            #{className}, #{grade}, #{teacherId}, #{classroom}, #{maxCapacity}, #{establishDate},
+            NOW(), NOW(), 0
+        )
+    </insert>
+
+    <!-- 更新班级 -->
+    <update id="update">
+        UPDATE class_entity
+        <set>
+            <if test="className != null">class_name = #{className},</if>
+            <if test="grade != null">grade = #{grade},</if>
+            <if test="teacherId != null">teacher_id = #{teacherId},</if>
+            <if test="classroom != null">classroom = #{classroom},</if>
+            <if test="maxCapacity != null">max_capacity = #{maxCapacity},</if>
+            <if test="establishDate != null">establish_date = #{establishDate},</if>
+            update_time = NOW()
+        </set>
+        WHERE id = #{id}
+        AND is_deleted = 0
+    </update>
+
+    <!-- 逻辑删除班级 -->
+    <update id="deleteById">
+        UPDATE class_entity
+        SET is_deleted = 1,
+            update_time = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <!-- 检查班级名称是否存在 -->
+    <select id="checkClassNameExists" resultMap="BaseResultMap">
+        SELECT id, class_name
+        FROM class_entity
+        WHERE class_name = #{className}
+        AND is_deleted = 0
+        <if test="excludeId != null">
+            AND id != #{excludeId}
+        </if>
+        LIMIT 1
+    </select>
+
+    <!-- 统计班级学生人数 -->
+    <select id="countStudentsByClassId" resultType="int">
+        SELECT COUNT(*)
+        FROM student
+        WHERE class_id = #{classId}
+        AND is_deleted = 0
+    </select>
+
+    <!-- 按年级查询班级列表 -->
+    <select id="selectByGrade" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM class_entity c
+        LEFT JOIN sys_user u ON c.teacher_id = u.id
+        WHERE c.grade = #{grade}
+        AND c.is_deleted = 0
+        ORDER BY c.class_name ASC
+    </select>
+
+    <!-- 按教师查询班级列表 -->
+    <select id="selectByTeacherId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM class_entity c
+        LEFT JOIN sys_user u ON c.teacher_id = u.id
+        WHERE c.teacher_id = #{teacherId}
+        AND c.is_deleted = 0
+        ORDER BY c.grade ASC, c.class_name ASC
+    </select>
+
+    <!-- 获取班级下拉列表（只返回id和className） -->
+    <select id="selectDropDownList" resultType="map">
+        SELECT id, class_name as className
+        FROM class_entity
+        WHERE is_deleted = 0
+        ORDER BY grade ASC, class_name ASC
+    </select>
+
+    <!-- 查询所有班级及其学生人数 -->
+    <select id="selectClassWithStudentCount" resultType="map">
+        SELECT c.id, c.class_name as className,
+               (SELECT COUNT(*) FROM student s WHERE s.class_id = c.id AND s.is_deleted = 0) as studentCount
+        FROM class_entity c
+        WHERE c.is_deleted = 0
+        ORDER BY studentCount DESC
+    </select>
+
+</mapper>

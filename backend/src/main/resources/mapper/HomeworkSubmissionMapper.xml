@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.edum.mapper.HomeworkSubmissionMapper">
+
+    <!-- 结果映射 -->
+    <resultMap id="BaseResultMap" type="com.edum.entity.HomeworkSubmission">
+        <id column="id" property="id"/>
+        <result column="homework_id" property="homeworkId"/>
+        <result column="student_id" property="studentId"/>
+        <result column="student_name" property="studentName"/>
+        <result column="class_id" property="classId"/>
+        <result column="class_name" property="className"/>
+        <result column="submit_content" property="submitContent"/>
+        <result column="submit_time" property="submitTime"/>
+        <result column="is_late" property="isLate"/>
+        <result column="grade_status" property="gradeStatus"/>
+        <result column="score" property="score"/>
+        <result column="comment" property="comment"/>
+        <result column="grader_id" property="graderId"/>
+        <result column="grader_name" property="graderName"/>
+        <result column="grade_time" property="gradeTime"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+        <result column="is_deleted" property="isDeleted"/>
+    </resultMap>
+
+    <!-- 基础列 -->
+    <sql id="Base_Column_List">
+        hs.id, hs.homework_id, hs.student_id, s.name as student_name,
+        hs.class_id, c.class_name as class_name,
+        hs.submit_content, hs.submit_time, hs.is_late,
+        hs.grade_status, hs.score, hs.comment,
+        hs.grader_id, u.real_name as grader_name,
+        hs.grade_time, hs.create_time, hs.update_time, hs.is_deleted
+    </sql>
+
+    <!-- 分页查询作业提交列表 -->
+    <select id="selectPage" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM homework_submission hs
+        LEFT JOIN student s ON hs.student_id = s.id
+        LEFT JOIN class_entity c ON hs.class_id = c.id
+        LEFT JOIN sys_user u ON hs.grader_id = u.id
+        WHERE hs.is_deleted = 0
+        <if test="homeworkId != null">
+            AND hs.homework_id = #{homeworkId}
+        </if>
+        <if test="studentId != null">
+            AND hs.student_id = #{studentId}
+        </if>
+        <if test="gradeStatus != null">
+            AND hs.grade_status = #{gradeStatus}
+        </if>
+        ORDER BY hs.submit_time DESC
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <!-- 统计总数 -->
+    <select id="countTotal" resultType="long">
+        SELECT COUNT(*)
+        FROM homework_submission hs
+        WHERE hs.is_deleted = 0
+        <if test="homeworkId != null">
+            AND hs.homework_id = #{homeworkId}
+        </if>
+        <if test="studentId != null">
+            AND hs.student_id = #{studentId}
+        </if>
+        <if test="gradeStatus != null">
+            AND hs.grade_status = #{gradeStatus}
+        </if>
+    </select>
+
+    <!-- 根据ID查询提交详情 -->
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM homework_submission hs
+        LEFT JOIN student s ON hs.student_id = s.id
+        LEFT JOIN class_entity c ON hs.class_id = c.id
+        LEFT JOIN sys_user u ON hs.grader_id = u.id
+        WHERE hs.id = #{id}
+        AND hs.is_deleted = 0
+    </select>
+
+    <!-- 检查同一学生对同一作业是否已有提交记录 -->
+    <select id="checkExistsByHomeworkAndStudent" resultMap="BaseResultMap">
+        SELECT id, homework_id, student_id, submit_time, is_late, grade_status, score
+        FROM homework_submission
+        WHERE homework_id = #{homeworkId}
+        AND student_id = #{studentId}
+        AND is_deleted = 0
+        LIMIT 1
+    </select>
+
+    <!-- 插入提交记录 -->
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO homework_submission (
+            homework_id, student_id, class_id, submit_content, submit_time,
+            is_late, grade_status, create_time, update_time, is_deleted
+        ) VALUES (
+            #{homeworkId}, #{studentId}, #{classId}, #{submitContent}, #{submitTime},
+            #{isLate}, 0, NOW(), NOW(), 0
+        )
+    </insert>
+
+    <!-- 更新提交记录（用于批改） -->
+    <update id="updateForGrade">
+        UPDATE homework_submission
+        SET score = #{score},
+            comment = #{comment},
+            grader_id = #{graderId},
+            grade_time = #{gradeTime},
+            grade_status = 1,
+            update_time = NOW()
+        WHERE id = #{id}
+        AND is_deleted = 0
+    </update>
+
+    <!-- 批量更新提交记录（用于批量批改） -->
+    <update id="batchUpdateForGrade">
+        <foreach collection="list" item="item" separator=";">
+            UPDATE homework_submission
+            SET score = #{item.score},
+                comment = #{item.comment},
+                grader_id = #{item.graderId},
+                grade_time = #{item.gradeTime},
+                grade_status = 1,
+                update_time = NOW()
+            WHERE id = #{item.id}
+            AND is_deleted = 0
+        </foreach>
+    </update>
+
+    <!-- 获取作业统计信息 -->
+    <select id="getStatisticsByHomeworkId" resultType="map">
+        SELECT
+            COUNT(*) as totalCount,
+            SUM(CASE WHEN grade_status = 1 THEN 1 ELSE 0 END) as submittedCount,
+            SUM(CASE WHEN grade_status = 0 THEN 1 ELSE 0 END) as notSubmittedCount,
+            CASE
+                WHEN COUNT(*) > 0 THEN ROUND(SUM(CASE WHEN grade_status = 1 THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2)
+                ELSE 0
+            END as completionRate,
+            SUM(CASE WHEN is_late = 0 AND grade_status = 1 THEN 1 ELSE 0 END) as onTimeCount,
+            CASE
+                WHEN SUM(CASE WHEN grade_status = 1 THEN 1 ELSE 0 END) > 0
+                THEN ROUND(SUM(CASE WHEN is_late = 0 AND grade_status = 1 THEN 1 ELSE 0 END) * 100.0 / SUM(CASE WHEN grade_status = 1 THEN 1 ELSE 0 END), 2)
+                ELSE 0
+            END as onTimeRate,
+            CASE
+                WHEN SUM(CASE WHEN grade_status = 1 THEN 1 ELSE 0 END) > 0
+                THEN ROUND(AVG(CASE WHEN grade_status = 1 THEN score ELSE NULL END), 2)
+                ELSE 0
+            END as avgScore
+        FROM homework_submission
+        WHERE homework_id = #{homeworkId}
+        AND is_deleted = 0
+    </select>
+
+    <!-- 获取未提交学生名单 -->
+    <select id="getNotSubmittedStudents" resultType="map">
+        SELECT s.id as studentId, s.name as studentName, s.student_no as studentNo
+        FROM student s
+        WHERE s.class_id = (
+            SELECT class_id FROM homework WHERE id = #{homeworkId}
+        )
+        AND s.is_deleted = 0
+        AND s.id NOT IN (
+            SELECT student_id FROM homework_submission
+            WHERE homework_id = #{homeworkId}
+            AND is_deleted = 0
+        )
+    </select>
+
+</mapper>
