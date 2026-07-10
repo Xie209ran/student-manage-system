@@ -18,9 +18,21 @@
     <name>edum-backend</name>
     <description>教学数字平台后台管理系统</description>
 
+    <repositories>
+        <repository>
+            <id>spring-milestones</id>
+            <name>Spring Milestones</name>
+            <url>https://repo.spring.io/milestone</url>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </repository>
+    </repositories>
+
     <properties>
         <java.version>21</java.version>
         <mybatis-spring-boot.version>3.0.3</mybatis-spring-boot.version>
+        <spring-ai.version>1.0.0-M6</spring-ai.version>
     </properties>
 
     <dependencies>
@@ -76,10 +88,17 @@
             <scope>runtime</scope>
         </dependency>
 
-        <!-- BCrypt密码加密 -->
+        <!-- BCrypt加密 -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+
+        <!-- Spring AI + Ollama -->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-ollama-spring-boot-starter</artifactId>
+            <version>${spring-ai.version}</version>
         </dependency>
 
         <!-- Test -->
